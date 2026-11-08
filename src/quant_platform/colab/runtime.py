@@ -88,14 +88,8 @@ class ColabSessionManager:
     def _resolve_storage_root(self) -> Path:
         if is_colab_runtime():
             drive_mount = Path("/content/drive")
-            if not (drive_mount / "MyDrive").exists():
-                try:
-                    from google.colab import drive  # type: ignore[import-not-found]
-
-                    drive.mount(str(drive_mount), force_remount=False)
-                except Exception:
-                    return self.local_fallback_dir
-            return drive_mount / "MyDrive" / self.drive_folder_name
+            if (drive_mount / "MyDrive").exists():
+                return drive_mount / "MyDrive" / self.drive_folder_name
         return self.local_fallback_dir
 
     @property
