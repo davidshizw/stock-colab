@@ -391,7 +391,29 @@ class YFinanceDataProvider:
     def fetch_daily_prices(self, symbols: list[str], start_date: date, end_date: date) -> list[DailyPriceBar]:
         import yfinance as yf
 
+        if not symbols:
+            return []
+
         bars: list[DailyPriceBar] = []
+        batch_df: pd.DataFrame | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                batch_df = yf.download(
+                    tickers=symbols,
+                    start=start_date.isoformat(),
+                    end=(end_date + timedelta(days=1)).isoformat(),
+                    group_by="ticker",
+                    auto_adjust=False,
+                    progress=False,
+                    threads=True,
+                )
+                if batch_df is not None and not batch_df.empty:
+                    break
+            except Exception as exc:
+                logger.warning("yfinance batch download retry %d/%d: %s", attempt, self.max_retries, exc)
+                if attempt < self.max_retries:
+                    time.sleep(self.retry_wait_sec * attempt)
+
         for sym in symbols:
             inst = self._inst_map.get(
                 sym,
@@ -404,19 +426,30 @@ class YFinanceDataProvider:
                 ),
             )
             hist: pd.DataFrame | None = None
-            for attempt in range(1, self.max_retries + 1):
+            if batch_df is not None and not batch_df.empty:
                 try:
-                    ticker = yf.Ticker(sym)
-                    hist = ticker.history(
-                        start=start_date.isoformat(),
-                        end=(end_date + timedelta(days=1)).isoformat(),
-                        auto_adjust=False,
-                    )
-                    break
-                except Exception as exc:
-                    logger.warning("yfinance retry %d/%d for %s: %s", attempt, self.max_retries, sym, exc)
-                    if attempt < self.max_retries:
-                        time.sleep(self.retry_wait_sec * attempt)
+                    if isinstance(batch_df.columns, pd.MultiIndex):
+                        if sym in batch_df.columns.get_level_values(0):
+                            hist = batch_df[sym].dropna(how="all")
+                    elif len(symbols) == 1:
+                        hist = batch_df.dropna(how="all")
+                except Exception:
+                    hist = None
+
+            if hist is None or hist.empty:
+                for attempt in range(1, self.max_retries + 1):
+                    try:
+                        ticker = yf.Ticker(sym)
+                        hist = ticker.history(
+                            start=start_date.isoformat(),
+                            end=(end_date + timedelta(days=1)).isoformat(),
+                            auto_adjust=False,
+                        )
+                        break
+                    except Exception as exc:
+                        logger.warning("yfinance retry %d/%d for %s: %s", attempt, self.max_retries, sym, exc)
+                        if attempt < self.max_retries:
+                            time.sleep(self.retry_wait_sec * attempt)
 
             if hist is None or hist.empty:
                 logger.warning("No live price bars returned by yfinance for %s", sym)
@@ -434,6 +467,16 @@ class YFinanceDataProvider:
                 vol = float(row.get("Volume", 0.0))
                 if close_p <= 0 or np.isnan(close_p):
                     continue
+                if np.isnan(open_p) or open_p <= 0:
+                    open_p = close_p
+                if np.isnan(high_p) or high_p <= 0:
+                    high_p = max(open_p, close_p)
+                if np.isnan(low_p) or low_p <= 0:
+                    low_p = min(open_p, close_p)
+                if np.isnan(adj_p) or adj_p <= 0:
+                    adj_p = close_p
+                if np.isnan(vol) or vol < 0:
+                    vol = 0.0
                 high_p = max(high_p, open_p, close_p)
                 low_p = min(low_p, open_p, close_p)
                 bars.append(
