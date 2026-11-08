@@ -94,11 +94,15 @@ def align_us_overnight_to_asx(
     us_clean = us_df.copy()
     asx_clean = asx_df.copy()
 
-    us_clean["us_close_utc"] = pd.to_datetime(us_clean[us_close_col], utc=True)
+    us_clean["us_close_utc"] = pd.to_datetime(us_clean[us_close_col], utc=True).astype(
+        "datetime64[ns, UTC]"
+    )
     asx_clean["asx_open_utc"] = asx_clean[asx_trade_date_col].apply(
         lambda d: get_market_open_utc(pd.to_datetime(d).date(), MarketCode.ASX)
     )
-    asx_clean["asx_open_utc"] = pd.to_datetime(asx_clean["asx_open_utc"], utc=True)
+    asx_clean["asx_open_utc"] = pd.to_datetime(asx_clean["asx_open_utc"], utc=True).astype(
+        "datetime64[ns, UTC]"
+    )
 
     us_sorted = us_clean.sort_values("us_close_utc").reset_index(drop=True)
     asx_sorted = asx_clean.sort_values("asx_open_utc").reset_index(drop=True)
