@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>US & ASX AI Quantitative Research Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body { background-color: #0b0f19; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { background-color: #111827; border: 1px solid #1f2937; border-radius: 0.5rem; }
+    .tab-btn.active { background-color: #2563eb; color: #ffffff; font-weight: 600; }
+    .pos { color: #10b981; }
+    .neg { color: #ef4444; }
+    table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; }
+    table td { font-size: 0.85rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Top Header -->
+  <header class="border-b border-gray-800 bg-gray-900 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-lg font-bold tracking-tight text-white">US & ASX Quantitative Investment Research Platform</h1>
+      <p class="text-xs text-gray-400">NYSE / Nasdaq & ASX 200 · DuckDB + Parquet PIT Engine · Franking & WHT Aware · Zero Look-Ahead</p>
+    </div>
+    <div class="flex items-center gap-3 text-xs">
+      <span id="health-badge" class="px-2.5 py-1 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700">DATA: CHECKING...</span>
+      <span id="asof-badge" class="px-2.5 py-1 rounded bg-gray-800 text-gray-300 border border-gray-700">AS OF: --</span>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs (10 Modules) -->
+  <nav class="bg-gray-900/70 border-b border-gray-800 px-6 py-2 flex flex-wrap gap-1.5 text-xs">
+    <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn active px-3 py-1.5 rounded hover:bg-gray-800">1. 市场总览 (Overview)</button>
+    <button onclick="switchTab('us-screener')" id="tab-us-screener" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">2. 美股选股 (US Screener)</button>
+    <button onclick="switchTab('asx-screener')" id="tab-asx-screener" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">3. 澳股选股 (ASX Screener)</button>
+    <button onclick="switchTab('cross-market')" id="tab-cross-market" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">4. 跨市场联动 (US→ASX)</button>
+    <button onclick="switchTab('factors')" id="tab-factors" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">5. 因子分析 (Factors & IC)</button>
+    <button onclick="switchTab('backtest')" id="tab-backtest" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">6. 策略回测 (Backtesting)</button>
+    <button onclick="switchTab('portfolio')" id="tab-portfolio" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">7. 组合优化 (Portfolio)</button>
+    <button onclick="switchTab('agents')" id="tab-agents" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">8. AI 投研报告 (AI Agents)</button>
+    <button onclick="switchTab('experiments')" id="tab-experiments" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">9. 实验与 Colab (Experiments)</button>
+    <button onclick="switchTab('data-health')" id="tab-data-health" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">10. 数据健康 (Data Health)</button>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 p-6 max-w-[1600px] w-full mx-auto space-y-6">
+
+    <!-- 1. Market Overview -->
+    <section id="sec-overview" class="space-y-4">
+      <div id="overview-cards" class="grid grid-cols-2 md:grid-cols-5 gap-4"></div>
+      <div class="card p-4">
+        <h2 class="text-sm font-semibold mb-2 text-gray-200">跨市场核心指数、商品与汇率归一化走势 (Base = 100)</h2>
+        <div id="chart-overview" style="height: 400px;"></div>
+      </div>
+    </section>
+
+    <!-- 2. US Equity Screener -->
+    <section id="sec-us-screener" class="hidden space-y-4">
+      <div class="card p-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-semibold text-white">美股多因子系统化选股器 (NYSE / Nasdaq)</h2>
+          <p class="text-xs text-gray-400">行业中性化 Z-Score 合成：Value (25%) + Quality (30%) + Momentum (25%) + Low Risk (10%) + Net Yield (10%)</p>
+        </div>
+        <button onclick="loadScreener('US', 'us-screener-tbody')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-medium">刷新美股排名</button>
+      </div>
+      <div class="card overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-800 bg-gray-900/50">
+              <th class="p-3">排名</th><th class="p-3">代码</th><th class="p-3">名称</th><th class="p-3">行业</th>
+              <th class="p-3">最新价(USD)</th><th class="p-3">PE</th><th class="p-3">ROE</th><th class="p-3">6M动量</th>
+              <th class="p-3">20D波动率</th><th class="p-3">价值分</th><th class="p-3">质量分</th><th class="p-3">动量分</th><th class="p-3">综合得分</th>
+            </tr>
+          </thead>
+          <tbody id="us-screener-tbody" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. ASX Equity Screener -->
+    <section id="sec-asx-screener" class="hidden space-y-4">
+      <div class="card p-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-semibold text-white">澳股多因子系统化选股器 (ASX 200 · 含澳洲 Franking Credits 完税红利抵免)</h2>
+          <p class="text-xs text-gray-400">支持澳洲 30% 公司税率下的 Grossed-up Dividend Yield、大宗商品敏感度与美股隔夜映射因子</p>
+        </div>
+        <button onclick="loadScreener('ASX', 'asx-screener-tbody')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-medium">刷新澳股排名</button>
+      </div>
+      <div class="card overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-800 bg-gray-900/50">
+              <th class="p-3">排名</th><th class="p-3">代码</th><th class="p-3">名称</th><th class="p-3">行业</th>
+              <th class="p-3">最新价(AUD)</th><th class="p-3">PE</th><th class="p-3">ROE</th>
+              <th class="p-3">现金股息率</th><th class="p-3">Franking比例</th><th class="p-3">含税抵免股息率</th>
+              <th class="p-3">6M动量</th><th class="p-3">综合得分</th>
+            </tr>
+          </thead>
+          <tbody id="asx-screener-tbody" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4. Cross-Market Intelligence -->
+    <section id="sec-cross-market" class="hidden space-y-4">
+      <div class="card p-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-white">美股隔夜行情对澳股开盘跳空与行业传导分析 (US Overnight → ASX Session)</h2>
+          <p class="text-xs text-gray-400">基于精确 UTC 时间戳 (US Close 16:00 ET &lt; ASX Open 10:00 Sydney) 对齐，严格杜绝跨时区前视偏差</p>
+        </div>
+        <span id="pit-align-badge" class="px-3 py-1 rounded text-xs bg-emerald-900/60 text-emerald-300 border border-emerald-700">PIT ALIGNED</span>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card p-4">
+          <h3 class="text-xs font-semibold uppercase text-gray-400 mb-2">ASX 行业对美股 SPY / QQQ / 铜商品 / AUDUSD 的敏感度</h3>
+          <div id="chart-cross-sector" style="height: 340px;"></div>
+        </div>
+        <div class="card p-4 overflow-x-auto">
+          <h3 class="text-xs font-semibold uppercase text-gray-400 mb-2">ASX 个股隔夜跳空相关性与方向命中率</h3>
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-gray-800">
+                <th class="p-2">标的</th><th class="p-2">行业</th><th class="p-2">SPY跳空相关</th>
+                <th class="p-2">商品相关性</th><th class="p-2">AUDUSD相关性</th><th class="p-2">跳空方向胜率</th>
+              </tr>
+            </thead>
+            <tbody id="cross-stock-tbody" class="divide-y divide-gray-800"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Factor Analytics -->
+    <section id="sec-factors" class="hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card p-4">
+          <h3 class="text-xs font-semibold uppercase text-gray-400 mb-2">分层回测年化收益 (Quantiles Q1~Q5 & Long-Short Spread)</h3>
+          <div id="chart-quantiles" style="height: 320px;"></div>
+        </div>
+        <div class="card p-4">
+          <h3 class="text-xs font-semibold uppercase text-gray-400 mb-2">因子衰减分析 (5D / 10D / 21D Rank IC Decay)</h3>
+          <div id="chart-decay" style="height: 320px;"></div>
+        </div>
+      </div>
+      <div class="card p-4 overflow-x-auto">
+        <h3 class="text-xs font-semibold uppercase text-gray-400 mb-3">因子统计显著性检验表 (IC / Rank IC / IR / 牛熊状态稳定性 / 换手率)</h3>
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-800">
+              <th class="p-2.5">因子名称</th><th class="p-2.5">Mean IC</th><th class="p-2.5">Mean Rank IC</th>
+              <th class="p-2.5">IC IR</th><th class="p-2.5">IC胜率(&gt;0)</th><th class="p-2.5">Bull Rank IC</th>
+              <th class="p-2.5">Bear Rank IC</th><th class="p-2.5">秩换手率</th>
+            </tr>
+          </thead>
+          <tbody id="factor-eval-tbody" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6. Strategy Backtesting -->
+    <section id="sec-backtest" class="hidden space-y-4">
+      <div class="card p-4 flex flex-wrap items-end gap-4">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">股票池范围</label>
+          <select id="bt-market" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-xs">
+            <option value="ALL">美股 + 澳股联合 (ALL)</option>
+            <option value="ASX">仅澳股 (ASX 200)</option>
+            <option value="US">仅美股 (US S&P/Nasdaq)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">基准计价货币</label>
+          <select id="bt-currency" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-xs">
+            <option value="AUD">AUD (澳元计价，含汇率折算)</option>
+            <option value="USD">USD (美元计价，含汇率折算)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">组合权重优化模型</label>
+          <select id="bt-scheme" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-xs">
+            <option value="factor_weight">因子得分加权 (Factor Weight)</option>
+            <option value="risk_parity">风险平价 (ERC Risk Parity)</option>
+            <option value="min_variance">最小方差 (Minimum Variance)</option>
+            <option value="mean_variance">均值-方差优化 (Mean-Variance)</option>
+            <option value="equal_weight">等权重 (Equal Weight)</option>
+            <option value="market_cap">市值加权 (Market-Cap Weight)</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2 pb-1">
+          <input type="checkbox" id="bt-franking" checked />
+          <label for="bt-franking" class="text-xs text-gray-300">计入澳洲 Franking Credits</label>
+        </div>
+        <div class="flex items-center gap-2 pb-1">
+          <input type="checkbox" id="bt-wht" checked />
+          <label for="bt-wht" class="text-xs text-gray-300">扣除美股 15% 预提税</label>
+        </div>
+        <button onclick="runBacktest()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold">运行回测与样本外检验</button>
+      </div>
+
+      <div id="bt-metrics-grid" class="grid grid-cols-2 md:grid-cols-6 gap-3"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="card p-4 lg:col-span-2">
+          <h3 class="text-xs font-semibold uppercase text-gray-400 mb-2">策略累计净值与动态回撤曲线 (含 In-Sample / Validation / Out-of-Sample 切分)</h3>
+          <div id="chart-bt-nav" style="height: 360px;"></div>
+        </div>
+        <div class="card p-4 space-y-4">
+          <h3 class="text-xs font-semibold uppercase text-gray-400">时序样本切分表现 (Purged & Embargoed Split)</h3>
+          <div id="bt-split-box" class="space-y-2 text-xs"></div>
+          <h3 class="text-xs font-semibold uppercase text-gray-400 pt-2">最新一期持仓权重</h3>
+          <div id="bt-holdings-box" class="space-y-1 text-xs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Portfolio Analytics -->
+    <section id="sec-portfolio" class="hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card p-4 overflow-x-auto">
+          <h3 class="text-xs font-semibold uppercase text-gray-400 mb-3">6 种组合构建与优化模型横向对比 (AUD 计价)</h3>
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-gray-800">
+                <th class="p-2.5">优化方法</th><th class="p-2.5">CAGR</th><th class="p-2.5">年化波动</th>
+                <th class="p-2.5">Sharpe</th><th class="p-2.5">Sortino</th><th class="p-2.5">MaxDD</th><th class="p-2.5">平均换手</th>
+              </tr>
+            </thead>
+            <tbody id="portfolio-compare-tbody" class="divide-y divide-gray-800"></tbody>
+          </table>
+        </div>
+        <div class="card p-4">
+          <h3 class="text-xs font-semibold uppercase text-gray-400 mb-2">不同优化器下的目标持仓权重分布对比</h3>
+          <div id="chart-portfolio-weights" style="height: 340px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. AI Research Reports -->
+    <section id="sec-agents" class="hidden space-y-4">
+      <div class="card p-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-semibold text-white">多智能体协同投研报告 (7 Specialized Agents + Deterministic Verification)</h2>
+          <p class="text-xs text-gray-400">所有财务比率、IC、期权 Greeks 与回测指标均由确定性工具计算并附带数据表溯源，严禁大模型编造数字</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="agent-symbol" type="text" placeholder="输入代码如 BHP.AX 或 NVDA" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-xs" />
+          <button onclick="loadAgentReport()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold">生成证据驱动报告</button>
+        </div>
+      </div>
+      <div id="agent-report-container" class="space-y-4"></div>
+    </section>
+
+    <!-- 9. Experiment Tracking -->
+    <section id="sec-experiments" class="hidden space-y-4">
+      <div id="colab-budget-card" class="card p-4"></div>
+      <div class="card p-4 overflow-x-auto">
+        <h3 class="text-xs font-semibold uppercase text-gray-400 mb-3">机器学习与因子实验追踪注册表 (Local Baseline → Colab GPU)</h3>
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-800">
+              <th class="p-2.5">实验 ID</th><th class="p-2.5">实验名称</th><th class="p-2.5">运行环境</th>
+              <th class="p-2.5">模型架构</th><th class="p-2.5">验证集 Rank IC</th><th class="p-2.5">样本外 Rank IC</th>
+              <th class="p-2.5">样本外 Sharpe</th><th class="p-2.5">消耗 CU</th><th class="p-2.5">状态</th>
+            </tr>
+          </thead>
+          <tbody id="experiments-tbody" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 10. Data Health & Update Status -->
+    <section id="sec-data-health" class="hidden space-y-4">
+      <div id="data-health-summary" class="grid grid-cols-2 md:grid-cols-5 gap-4"></div>
+      <div class="card p-4 overflow-x-auto">
+        <h3 class="text-xs font-semibold uppercase text-gray-400 mb-3">数据入库与溯源审计日志 (Ingestion Provenance Log)</h3>
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-800">
+              <th class="p-2.5">批次 Run ID</th><th class="p-2.5">UTC 时间戳</th><th class="p-2.5">数据源</th>
+              <th class="p-2.5">目标表</th><th class="p-2.5">更新行数</th><th class="p-2.5">状态</th>
+            </tr>
+          </thead>
+          <tbody id="ingestion-audit-tbody" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const charts = {};
+    function getChart(id) {
+      if (!charts[id]) {
+        charts[id] = echarts.init(document.getElementById(id), 'dark');
+      }
+      return charts[id];
+    }
+    window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
+
+    function fmtPct(v) {
+      if (v === null || v === undefined || isNaN(v)) return '--';
+      const cls = v >= 0 ? 'pos' : 'neg';
+      const sign = v > 0 ? '+' : '';
+      return `<span class="${cls}">${sign}${(v * 100).toFixed(2)}%</span>`;
+    }
+
+    function switchTab(tab) {
+      const tabs = ['overview','us-screener','asx-screener','cross-market','factors','backtest','portfolio','agents','experiments','data-health'];
+      tabs.forEach(t => {
+        document.getElementById(`sec-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('active');
+      });
+      document.getElementById(`sec-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-${tab}`).classList.add('active');
+
+      if (tab === 'overview') loadOverview();
+      if (tab === 'us-screener') loadScreener('US', 'us-screener-tbody');
+      if (tab === 'asx-screener') loadScreener('ASX', 'asx-screener-tbody');
+      if (tab === 'cross-market') loadCrossMarket();
+      if (tab === 'factors') loadFactors();
+      if (tab === 'backtest') runBacktest();
+      if (tab === 'portfolio') loadPortfolioComparison();
+      if (tab === 'agents') loadAgentReport();
+      if (tab === 'experiments') loadExperiments();
+      if (tab === 'data-health') loadDataHealth();
+    }
+
+    async function loadOverview() {
+      const res = await fetch('/api/overview').then(r => r.json());
+      document.getElementById('asof-badge').textContent = `AS OF: ${res.as_of_date}`;
+      const cardsHtml = res.benchmarks.map(b => `
+        <div class="card p-3.5">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-sm text-white">${b.symbol}</span>
+            <span class="text-xs text-gray-400">${b.close}</span>
+          </div>
+          <div class="text-xs text-gray-400 truncate mt-0.5">${b.name}</div>
+          <div class="flex justify-between items-center mt-2 text-xs">
+            <span>1D: ${fmtPct(b.ret_1d)}</span>
+            <span>6M: ${fmtPct(b.ret_6m)}</span>
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('overview-cards').innerHTML = cardsHtml;
+
+      const chart = getChart('chart-overview');
+      const symbols = Object.keys(res.normalized_series);
+      const dates = symbols.length ? res.normalized_series[symbols[0]].map(x => x.date) : [];
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        legend: { data: symbols, top: 0 },
+        grid: { left: 45, right: 20, top: 35, bottom: 30 },
+        xAxis: { type: 'category', data: dates },
+        yAxis: { type: 'value', scale: true },
+        series: symbols.map(s => ({
+          name: s,
+          type: 'line',
+          showSymbol: false,
+          data: res.normalized_series[s].map(x => x.normalized)
+        }))
+      });
+    }
+
+    async function loadScreener(market, tbodyId) {
+      const res = await fetch(`/api/screener?market=${market}`).then(r => r.json());
+      const tbody = document.getElementById(tbodyId);
+      if (market === 'US') {
+        tbody.innerHTML = res.results.map(r => `
+          <tr class="hover:bg-gray-800/40">
+            <td class="p-3 font-bold">${r.rank}</td>
+            <td class="p-3 font-semibold text-blue-400">${r.symbol}</td>
+            <td class="p-3">${r.name}</td>
+            <td class="p-3 text-gray-400">${r.sector}</td>
+            <td class="p-3">${r.close}</td>
+            <td class="p-3">${r.pe_ratio}x</td>
+            <td class="p-3">${(r.roe * 100).toFixed(1)}%</td>
+            <td class="p-3">${fmtPct(r.mom_6m)}</td>
+            <td class="p-3">${(r.volatility_20d * 100).toFixed(1)}%</td>
+            <td class="p-3">${r.value_score.toFixed(2)}</td>
+            <td class="p-3">${r.quality_score.toFixed(2)}</td>
+            <td class="p-3">${r.momentum_score.toFixed(2)}</td>
+            <td class="p-3 font-bold text-emerald-400">${r.composite_score.toFixed(3)}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = res.results.map(r => `
+          <tr class="hover:bg-gray-800/40">
+            <td class="p-3 font-bold">${r.rank}</td>
+            <td class="p-3 font-semibold text-amber-400">${r.symbol}</td>
+            <td class="p-3">${r.name}</td>
+            <td class="p-3 text-gray-400">${r.sector}</td>
+            <td class="p-3">${r.close}</td>
+            <td class="p-3">${r.pe_ratio}x</td>
+            <td class="p-3">${(r.roe * 100).toFixed(1)}%</td>
+            <td class="p-3">${(r.dividend_yield * 100).toFixed(2)}%</td>
+            <td class="p-3">${(r.franking_rate * 100).toFixed(0)}%</td>
+            <td class="p-3 font-semibold text-emerald-300">${(r.franking_grossed_yield * 100).toFixed(2)}%</td>
+            <td class="p-3">${fmtPct(r.mom_6m)}</td>
+            <td class="p-3 font-bold text-emerald-400">${r.composite_score.toFixed(3)}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    async function loadCrossMarket() {
+      const res = await fetch('/api/cross-market').then(r => r.json());
+      document.getElementById('pit-align-badge').textContent =
+        res.alignment_verified ? `ZERO LOOK-AHEAD VERIFIED (Violations: ${res.lookahead_violations})` : 'ALIGNMENT WARNING';
+
+      const sectors = res.sector_sensitivity.map(s => s.asx_sector);
+      const chart = getChart('chart-cross-sector');
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['SPY 隔夜跳空相关', 'QQQ 隔夜跳空相关', 'HG=F 铜商品相关', 'AUDUSD 汇率相关'], top: 0 },
+        grid: { left: 50, right: 20, top: 35, bottom: 30 },
+        xAxis: { type: 'category', data: sectors },
+        yAxis: { type: 'value' },
+        series: [
+          { name: 'SPY 隔夜跳空相关', type: 'bar', data: res.sector_sensitivity.map(s => s.corr_gap_SPY || 0) },
+          { name: 'QQQ 隔夜跳空相关', type: 'bar', data: res.sector_sensitivity.map(s => s['corr_gap_QQQ'] || 0) },
+          { name: 'HG=F 铜商品相关', type: 'bar', data: res.sector_sensitivity.map(s => s['corr_total_HG=F'] || 0) },
+          { name: 'AUDUSD 汇率相关', type: 'bar', data: res.sector_sensitivity.map(s => s['corr_total_AUDUSD=X'] || 0) }
+        ]
+      });
+
+      document.getElementById('cross-stock-tbody').innerHTML = res.stock_transmission.map(s => `
+        <tr class="hover:bg-gray-800/40">
+          <td class="p-2 font-semibold text-amber-400">${s.symbol}</td>
+          <td class="p-2 text-gray-400">${s.sector}</td>
+          <td class="p-2 font-medium">${s.us_spy_overnight_gap_corr}</td>
+          <td class="p-2">${s.commodity_return_corr}</td>
+          <td class="p-2">${s.audusd_return_corr}</td>
+          <td class="p-2 text-emerald-400 font-semibold">${(s.overnight_gap_directional_hit_rate * 100).toFixed(1)}%</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadFactors() {
+      const res = await fetch('/api/factors/analytics').then(r => r.json());
+      const ev = res.evaluation;
+      const qData = ev.quantile_annualized_returns || {};
+      const qKeys = Object.keys(qData);
+
+      const qChart = getChart('chart-quantiles');
+      qChart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        grid: { left: 50, right: 20, top: 20, bottom: 30 },
+        xAxis: { type: 'category', data: qKeys },
+        yAxis: { type: 'value', axisLabel: { formatter: v => (v * 100).toFixed(0) + '%' } },
+        series: [{
+          type: 'bar',
+          data: qKeys.map(k => ({
+            value: qData[k],
+            itemStyle: { color: qData[k] >= 0 ? '#10b981' : '#ef4444' }
+          }))
+        }]
+      });
+
+      const factors = ev.factor_summary || [];
+      const dChart = getChart('chart-decay');
+      dChart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['5D Rank IC', '10D Rank IC', '21D Rank IC'], top: 0 },
+        grid: { left: 50, right: 20, top: 35, bottom: 30 },
+        xAxis: { type: 'category', data: factors.map(f => f.factor.replace('_score', '')) },
+        yAxis: { type: 'value' },
+        series: [
+          { name: '5D Rank IC', type: 'bar', data: factors.map(f => f.decay_5d_ric) },
+          { name: '10D Rank IC', type: 'bar', data: factors.map(f => f.decay_10d_ric) },
+          { name: '21D Rank IC', type: 'bar', data: factors.map(f => f.decay_21d_ric) }
+        ]
+      });
+
+      document.getElementById('factor-eval-tbody').innerHTML = factors.map(f => `
+        <tr class="hover:bg-gray-800/40">
+          <td class="p-2.5 font-semibold text-blue-400">${f.factor}</td>
+          <td class="p-2.5">${f.mean_ic}</td>
+          <td class="p-2.5 font-semibold">${f.mean_rank_ic}</td>
+          <td class="p-2.5">${f.ic_ir}</td>
+          <td class="p-2.5">${(f.positive_ic_rate * 100).toFixed(1)}%</td>
+          <td class="p-2.5">${f.bull_regime_rank_ic}</td>
+          <td class="p-2.5">${f.bear_regime_rank_ic}</td>
+          <td class="p-2.5">${(f.avg_rank_turnover * 100).toFixed(1)}%</td>
+        </tr>
+      `).join('');
+    }
+
+    async function runBacktest() {
+      const payload = {
+        market_filter: document.getElementById('bt-market').value,
+        base_currency: document.getElementById('bt-currency').value,
+        weighting_scheme: document.getElementById('bt-scheme').value,
+        include_franking_credits: document.getElementById('bt-franking').checked,
+        apply_us_withholding_tax: document.getElementById('bt-wht').checked,
+        top_n: 6,
+        rebalance_frequency: 'M'
+      };
+      const res = await fetch('/api/backtest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(r => r.json());
+
+      const m = res.metrics;
+      const metricItems = [
+        ['年化收益 (CAGR)', fmtPct(m.cagr)],
+        ['夏普比率 (Sharpe)', m.sharpe_ratio.toFixed(2)],
+        ['索提诺 (Sortino)', m.sortino_ratio.toFixed(2)],
+        ['最大回撤 (MaxDD)', `<span class="neg">-${(m.max_drawdown * 100).toFixed(2)}%</span>`],
+        ['年化 Alpha / Beta', `${fmtPct(m.alpha_annualized)} / ${m.beta.toFixed(2)}`],
+        ['红利抵免与税费贡献', `${m.total_tax_and_franking_adjustment_bps > 0 ? '+' : ''}${m.total_tax_and_franking_adjustment_bps} bps`]
+      ];
+      document.getElementById('bt-metrics-grid').innerHTML = metricItems.map(([label, val]) => `
+        <div class="card p-3">
+          <div class="text-xs text-gray-400">${label}</div>
+          <div class="text-base font-bold mt-1">${val}</div>
+        </div>
+      `).join('');
+
+      const navChart = getChart('chart-bt-nav');
+      const dates = res.equity_curve.map(x => x.date);
+      navChart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['策略净值 (Portfolio)', '基准净值 (Benchmark)', '动态回撤 (Drawdown)'], top: 0 },
+        grid: { left: 50, right: 50, top: 35, bottom: 30 },
+        xAxis: { type: 'category', data: dates },
+        yAxis: [
+          { type: 'value', name: 'NAV', scale: true },
+          { type: 'value', name: 'Drawdown', axisLabel: { formatter: v => (v * 100).toFixed(0) + '%' } }
+        ],
+        series: [
+          { name: '策略净值 (Portfolio)', type: 'line', showSymbol: false, data: res.equity_curve.map(x => x.portfolio_nav) },
+          { name: '基准净值 (Benchmark)', type: 'line', showSymbol: false, data: res.equity_curve.map(x => x.benchmark_nav) },
+          { name: '动态回撤 (Drawdown)', type: 'line', yAxisIndex: 1, showSymbol: false, areaStyle: { opacity: 0.15 }, data: res.equity_curve.map(x => x.drawdown) }
+        ]
+      });
+
+      const sp = res.split_summary;
+      document.getElementById('bt-split-box').innerHTML = ['in_sample', 'validation', 'out_of_sample'].map(k => {
+        const item = sp[k] || {};
+        return `
+          <div class="p-2.5 rounded bg-gray-800/60 border border-gray-700 flex justify-between items-center">
+            <span class="font-semibold uppercase">${k.replaceAll('_', ' ')} (${item.days || 0}d)</span>
+            <span>CAGR: ${fmtPct(item.cagr || 0)} | Sharpe: ${(item.sharpe || 0).toFixed(2)}</span>
+          </div>
+        `;
+      }).join('');
+
+      const lastHold = res.holdings_history.length ? res.holdings_history[res.holdings_history.length - 1].weights : {};
+      document.getElementById('bt-holdings-box').innerHTML = Object.entries(lastHold).map(([sym, w]) => `
+        <div class="flex justify-between py-1 border-b border-gray-800">
+          <span class="font-medium text-blue-400">${sym}</span>
+          <span>${(w * 100).toFixed(1)}%</span>
+        </div>
+      `).join('');
+    }
+
+    async function loadPortfolioComparison() {
+      const res = await fetch('/api/portfolio/compare-schemes').then(r => r.json());
+      document.getElementById('portfolio-compare-tbody').innerHTML = res.scheme_comparison.map(s => `
+        <tr class="hover:bg-gray-800/40">
+          <td class="p-2.5 font-semibold text-blue-400">${s.scheme}</td>
+          <td class="p-2.5">${fmtPct(s.cagr)}</td>
+          <td class="p-2.5">${(s.volatility * 100).toFixed(2)}%</td>
+          <td class="p-2.5 font-bold">${s.sharpe.toFixed(2)}</td>
+          <td class="p-2.5">${s.sortino.toFixed(2)}</td>
+          <td class="p-2.5 text-red-400">-${(s.max_drawdown * 100).toFixed(2)}%</td>
+          <td class="p-2.5">${(s.turnover * 100).toFixed(1)}%</td>
+        </tr>
+      `).join('');
+
+      const weightsMap = res.latest_weights_by_scheme || {};
+      const schemes = Object.keys(weightsMap);
+      const allSyms = Array.from(new Set(schemes.flatMap(sc => Object.keys(weightsMap[sc]))));
+      const chart = getChart('chart-portfolio-weights');
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { data: allSyms, top: 0 },
+        grid: { left: 50, right: 20, top: 40, bottom: 30 },
+        xAxis: { type: 'category', data: schemes },
+        yAxis: { type: 'value', max: 1.0 },
+        series: allSyms.map(sym => ({
+          name: sym,
+          type: 'bar',
+          stack: 'total',
+          data: schemes.map(sc => weightsMap[sc][sym] || 0)
+        }))
+      });
+    }
+
+    async function loadAgentReport() {
+      const sym = document.getElementById('agent-symbol').value.trim();
+      const q = sym ? `?symbol=${encodeURIComponent(sym)}` : '';
+      const rep = await fetch(`/api/agents/report${q}`).then(r => r.json());
+
+      document.getElementById('agent-report-container').innerHTML = `
+        <div class="card p-5 space-y-4">
+          <div class="flex flex-wrap justify-between items-center border-b border-gray-800 pb-3">
+            <div>
+              <span class="text-xs text-blue-400 font-semibold uppercase">${rep.report_id} · ${rep.target_scope}</span>
+              <h3 class="text-base font-bold text-white mt-0.5">AI 多智能体投研综述 (Evidence-Backed Research Synthesis)</h3>
+            </div>
+            <span class="text-xs text-gray-400">${rep.generated_at_utc}</span>
+          </div>
+          <p class="text-sm text-gray-200 leading-relaxed">${rep.executive_summary}</p>
+          <div class="p-3 rounded bg-blue-950/30 border border-blue-800/50 text-xs text-blue-200">
+            <strong>检验假设 (Hypothesis):</strong> ${rep.hypothesis_tested}
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 class="text-xs font-semibold uppercase text-emerald-400 mb-2">核心量化发现 (Verified Findings)</h4>
+              <ul class="list-disc list-inside text-xs space-y-1.5 text-gray-300">
+                ${rep.key_findings.map(f => `<li>${f}</li>`).join('')}
+              </ul>
+            </div>
+            <div>
+              <h4 class="text-xs font-semibold uppercase text-amber-400 mb-2">风险提示与不确定性评估 (Risks & Uncertainty)</h4>
+              <ul class="list-disc list-inside text-xs space-y-1.5 text-gray-300">
+                ${rep.risk_warnings.map(w => `<li>${w}</li>`).join('')}
+              </ul>
+              <p class="text-xs text-gray-400 mt-2">${rep.uncertainty_assessment}</p>
+            </div>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold uppercase text-gray-400 mb-2">确定性工具数值证据链 (Deterministic Evidence Provenance)</h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-gray-800">
+                    <th class="p-2">智能体角色</th><th class="p-2">验证指标</th><th class="p-2">确定性计算结果</th>
+                    <th class="p-2">方法论</th><th class="p-2">底层数据表</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800">
+                  ${rep.evidence_items.map(e => `
+                    <tr>
+                      <td class="p-2 font-semibold text-blue-400">${e.agent_role}</td>
+                      <td class="p-2">${e.metric_name}</td>
+                      <td class="p-2 font-mono text-xs text-emerald-300">${JSON.stringify(e.value)}</td>
+                      <td class="p-2 text-gray-400">${e.methodology}</td>
+                      <td class="p-2 text-gray-400 font-mono">${e.source_table}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadExperiments() {
+      const res = await fetch('/api/experiments').then(r => r.json());
+      const b = res.colab_compute_budget;
+      document.getElementById('colab-budget-card').innerHTML = `
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h3 class="text-sm font-bold text-white">Google Colab GPU 算力预算监控 (${b.plan})</h3>
+            <p class="text-xs text-gray-400 mt-0.5">${b.policy}</p>
+          </div>
+          <div class="text-right">
+            <div class="text-sm font-bold text-emerald-400">剩余: ${b.remaining_compute_units} / ${b.monthly_compute_units_limit} CU</div>
+            <div class="text-xs text-gray-400">本月已用: ${b.used_compute_units} CU (4.25%)</div>
+          </div>
+        </div>
+      `;
+      document.getElementById('experiments-tbody').innerHTML = res.experiments.map(e => `
+        <tr class="hover:bg-gray-800/40">
+          <td class="p-2.5 font-mono text-blue-400">${e.exp_id}</td>
+          <td class="p-2.5 font-semibold">${e.name}</td>
+          <td class="p-2.5 text-gray-400">${e.environment}</td>
+          <td class="p-2.5">${e.model_type}</td>
+          <td class="p-2.5">${e.val_rank_ic}</td>
+          <td class="p-2.5 font-bold text-emerald-400">${e.oos_rank_ic}</td>
+          <td class="p-2.5 font-bold">${e.oos_sharpe}</td>
+          <td class="p-2.5">${e.compute_units} CU</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-emerald-900/50 text-emerald-300 text-xs">${e.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadDataHealth() {
+      const res = await fetch('/api/data-health').then(r => r.json());
+      const q = res.quality;
+      const items = [
+        ['健康状态', q.status],
+        ['标的总数', q.total_instruments],
+        ['日频价格行数', q.total_price_rows],
+        ['PIT 财报快照数', q.total_fundamental_rows],
+        ['OHLC 异常违例', q.ohlc_violations]
+      ];
+      document.getElementById('data-health-summary').innerHTML = items.map(([k, v]) => `
+        <div class="card p-3.5">
+          <div class="text-xs text-gray-400">${k}</div>
+          <div class="text-lg font-bold mt-1 text-white">${v}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('ingestion-audit-tbody').innerHTML = res.recent_ingestions.map(a => `
+        <tr class="hover:bg-gray-800/40">
+          <td class="p-2.5 font-mono text-blue-400">${a.run_id}</td>
+          <td class="p-2.5 text-gray-400">${a.ingested_at_utc}</td>
+          <td class="p-2.5">${a.source}</td>
+          <td class="p-2.5 font-mono">${a.table_name}</td>
+          <td class="p-2.5 font-semibold">${a.rows_affected}</td>
+          <td class="p-2.5 text-emerald-400">${a.status}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Initial bootstrap
+    (async function init() {
+      const dh = await fetch('/api/data-health').then(r => r.json());
+      document.getElementById('health-badge').textContent = `DATA: ${dh.quality.status} (${dh.quality.total_price_rows} bars)`;
+      await loadOverview();
+    })();
+  </script>
+</body>
+</html>

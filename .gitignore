@@ -1,0 +1,24 @@
+# Python & uv
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local Analytical Storage
+data_store/
+*.duckdb
+*.duckdb.wal
+*.parquet
+
+# Environment variables
+.env
+.DS_Store
