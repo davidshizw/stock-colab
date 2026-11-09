@@ -147,6 +147,11 @@ def main() -> None:
     screen_p.add_argument("--market", default="ALL", choices=["US", "ASX", "ALL"])
     screen_p.add_argument("--top-n", type=int, default=10)
 
+    gb_p = sub.add_parser("grokbot", help="Generate Grok Bot + Moomoo MCP watchlist & paper-trading signal packet")
+    gb_p.add_argument("--capital-aud", type=float, default=100000.0)
+    gb_p.add_argument("--top-us", type=int, default=5)
+    gb_p.add_argument("--top-asx", type=int, default=5)
+
     args = parser.parse_args()
     if args.command == "serve":
         uvicorn.run("quant_platform.api.app:app", host=args.host, port=args.port, reload=False)
@@ -156,6 +161,12 @@ def main() -> None:
         screener = EquityScreener(store)
         rows = screener.screen(as_of_date=date(2026, 11, 6), market=args.market, top_n=args.top_n)
         print(json.dumps(rows, indent=2, ensure_ascii=False))
+    elif args.command == "grokbot":
+        from quant_platform.agents.grokbot_executor import GrokBotSignalGenerator
+
+        gen = GrokBotSignalGenerator(capital_aud=args.capital_aud)
+        packet = gen.generate_signal_packet(top_us_n=args.top_us, top_asx_n=args.top_asx)
+        print(json.dumps(packet, indent=2, ensure_ascii=False))
     else:
         mode = getattr(args, "mode", "fixture")
         run_end_to_end_demo(mode=mode)
