@@ -325,6 +325,76 @@ def create_app(store: MarketDataStore | None = None) -> FastAPI:
             "recent_ingestions": audit_rows,
         }
 
+    @app.get("/api/grokbot/signals")
+    def get_grokbot_signals(refresh: bool = Query(default=False)) -> dict[str, Any]:
+        import json as _json
+
+        from quant_platform.agents.grokbot_executor import GrokBotSignalGenerator
+
+        sig_file = Path("./data_store/grokbot_latest_signals.json")
+        if not refresh and sig_file.exists():
+            try:
+                return _json.loads(sig_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        gen = GrokBotSignalGenerator(output_path=sig_file)
+        return gen.generate_signal_packet(top_us_n=5, top_asx_n=5)
+
+    @app.post("/mcp")
+    def handle_mcp_jsonrpc(payload: dict[str, Any]) -> dict[str, Any]:
+        """Standard Streamable HTTP MCP (JSON-RPC 2.0) endpoint for Grok Bot integration."""
+        import json as _json
+
+        rpc_id = payload.get("id", 1)
+        method = payload.get("method", "")
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": rpc_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "stock-colab-quant-mcp", "version": "0.1.0"},
+                },
+            }
+        if method == "tools/list":
+            return {
+                "jsonrpc": "2.0",
+                "id": rpc_id,
+                "result": {
+                    "tools": [
+                        {
+                            "name": "get_grokbot_moomoo_signals",
+                            "description": "Get Top 10 US & ASX potential stocks with Moomoo ticker codes (US.xxx / AU.xxx), entry zones, 2.5x ATR stop-loss, 6M target prices, and Grok news sentiment.",
+                            "inputSchema": {"type": "object", "properties": {"refresh": {"type": "boolean"}}},
+                        },
+                        {
+                            "name": "get_us_asx_overnight_lead_lag",
+                            "description": "Get overnight US (SPY/QQQ/Copper/AUDUSD) to ASX opening gap transmission betas.",
+                            "inputSchema": {"type": "object", "properties": {}},
+                        },
+                    ]
+                },
+            }
+        if method == "tools/call":
+            params = payload.get("params", {})
+            t_name = params.get("name", "")
+            t_args = params.get("arguments", {}) or {}
+            if t_name == "get_grokbot_moomoo_signals":
+                data = get_grokbot_signals(refresh=bool(t_args.get("refresh", False)))
+            elif t_name == "get_us_asx_overnight_lead_lag":
+                data = get_cross_market_intelligence()
+            else:
+                data = {"error": f"Unknown tool: {t_name}"}
+            return {
+                "jsonrpc": "2.0",
+                "id": rpc_id,
+                "result": {
+                    "content": [{"type": "text", "text": _json.dumps(data, ensure_ascii=False, indent=2)}]
+                },
+            }
+        return {"jsonrpc": "2.0", "id": rpc_id, "result": {"status": "ok"}}
+
     return app
 
 

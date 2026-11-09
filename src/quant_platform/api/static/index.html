@@ -41,6 +41,7 @@
     <button onclick="switchTab('agents')" id="tab-agents" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">8. AI 投研报告 (AI Agents)</button>
     <button onclick="switchTab('experiments')" id="tab-experiments" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">9. 实验与 Colab (Experiments)</button>
     <button onclick="switchTab('data-health')" id="tab-data-health" class="tab-btn px-3 py-1.5 rounded hover:bg-gray-800">10. 数据健康 (Data Health)</button>
+    <button onclick="switchTab('grokbot')" id="tab-grokbot" class="tab-btn px-3 py-1.5 rounded bg-indigo-950/80 border border-indigo-500/50 text-indigo-200 hover:bg-indigo-800 font-semibold">🤖 11. Grok Bot × Moomoo 联动台</button>
   </nav>
 
   <!-- Main Content Container -->
@@ -286,6 +287,107 @@
       </div>
     </section>
 
+    <!-- 11. Grok Bot x Moomoo Live Signal & Execution Bridge -->
+    <section id="sec-grokbot" class="hidden space-y-4">
+      <div class="card p-4 border-indigo-500/40 bg-gradient-to-r from-gray-900 via-indigo-950/30 to-gray-900 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 border border-emerald-600 text-xs font-semibold">CONNECTED · LIVE BRIDGE</span>
+            <h2 class="text-sm font-bold text-white">Colab 全市场 108 股扫描 ➔ Grok Bot (桌面端) ➔ Moomoo OpenAPI 实时联动控制台</h2>
+          </div>
+          <p class="text-xs text-gray-300 mt-1">
+            已打通本地 Grok Bot (<code class="text-indigo-300">~/.grokbot</code>)、量化 MCP 服务端 (<code class="text-indigo-300">http://127.0.0.1:8000/mcp</code>) 与 Moomoo OpenAPI MCP (<code class="text-amber-300">https://mcp.moomoo.com/mcp</code> · 严格只读安全护栏)
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="copyGrokBotPrompt()" id="btn-copy-grokbot" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-semibold text-white shadow">
+            📋 一键复制发给 Grok Bot 的盯盘指令
+          </button>
+          <button onclick="loadGrokBot(true)" id="btn-refresh-grokbot" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-semibold text-white">
+            🔄 重新运行 108 股扫描 + 情绪共振
+          </button>
+        </div>
+      </div>
+
+      <!-- 3-Step Pipeline Status Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card p-4 border-l-4 border-l-blue-500">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold uppercase text-blue-400">STEP 1 · COLAB / 本地量化引擎</span>
+            <span class="px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 text-xs">108 Stocks Live</span>
+          </div>
+          <div class="text-sm font-semibold text-white mt-1.5">五维多因子 + GBDT 潜力股发现</div>
+          <p class="text-xs text-gray-400 mt-1">实时拉取 60 只美股 + 48 只澳股最新财报 (Forward PE, ROE, 营收/EPS 增速, 华尔街目标价) 与 1 年日 K 线突破形态。</p>
+          <div class="mt-2 text-xs font-mono text-gray-300 bg-gray-950/80 p-2 rounded border border-gray-800">
+            scripts/grokbot_signal.sh --capital-aud 100000
+          </div>
+        </div>
+
+        <div class="card p-4 border-l-4 border-l-indigo-500">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold uppercase text-indigo-400">STEP 2 · GROK BOT 桌面端桥接</span>
+            <span class="px-2 py-0.5 rounded bg-indigo-900/50 text-indigo-300 text-xs">MCP + Shell Ready</span>
+          </div>
+          <div class="text-sm font-semibold text-white mt-1.5">双通道直连 Grok Bot.app</div>
+          <p class="text-xs text-gray-400 mt-1">通道 A：Grok Bot 直接读取本地信号库或调用脚本；通道 B：通过 <code class="text-indigo-300">http://127.0.0.1:8000/mcp</code> 调用量化 MCP 工具。</p>
+          <div class="mt-2 text-xs font-mono text-indigo-300 bg-gray-950/80 p-2 rounded border border-gray-800">
+            data_store/grokbot_latest_signals.json
+          </div>
+        </div>
+
+        <div class="card p-4 border-l-4 border-l-amber-500">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold uppercase text-amber-400">STEP 3 · MOOMOO MCP 盘口核验</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 text-xs">READ-ONLY SAFE</span>
+          </div>
+          <div class="text-sm font-semibold text-white mt-1.5">Moomoo 实时盘口 + 账户持仓比对</div>
+          <p class="text-xs text-gray-400 mt-1">自动转换为 Moomoo 标准代码 (<code class="text-amber-300">US.MU</code>, <code class="text-amber-300">AU.SFR</code>)，由 Grok Bot 核对实时买卖盘与 2.5×ATR 止损位。</p>
+          <div class="mt-2 text-xs font-mono text-amber-300 bg-gray-950/80 p-2 rounded border border-gray-800">
+            https://mcp.moomoo.com/mcp (只读保护已开启)
+          </div>
+        </div>
+      </div>
+
+      <!-- Ready-to-Paste Grok Bot Prompt Box -->
+      <div class="card p-4 bg-gray-900/90 border border-indigo-500/30">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-semibold uppercase text-indigo-300">💬 直接粘贴到桌面 Grok Bot 对话框的指令 (已自动复制到您的 Mac 剪贴板，按 Cmd+V 即可粘贴)</h3>
+          <span id="grokbot-gen-time" class="text-xs text-gray-400">生成时间: --</span>
+        </div>
+        <pre id="grokbot-prompt-box" class="text-xs text-emerald-300 bg-gray-950 p-3 rounded border border-gray-800 whitespace-pre-wrap font-mono leading-relaxed">正在加载最新量化共振信号...</pre>
+      </div>
+
+      <!-- Moomoo Watchlist & Execution Plan Table -->
+      <div class="card overflow-x-auto">
+        <div class="p-4 border-b border-gray-800 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-semibold text-white">📊 Colab 量化 × Grok 情绪共振 ➔ Moomoo 模拟盘/盯盘执行清单 ($100,000 AUD 基准资金)</h3>
+            <p class="text-xs text-gray-400">融合 70% 多因子量化潜力得分 + 30% Grok 实时新闻/X 情绪催化剂评分，按 ATR 动态计算建议买入区间与硬止损位</p>
+          </div>
+          <span id="grokbot-FX-badge" class="px-2.5 py-1 rounded bg-gray-800 text-gray-300 text-xs font-mono">AUD/USD: --</span>
+        </div>
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-800 bg-gray-900/60">
+              <th class="p-3">Moomoo代码</th>
+              <th class="p-3">名称 / 板块</th>
+              <th class="p-3">量化潜力分</th>
+              <th class="p-3">Grok情绪分</th>
+              <th class="p-3">共振总分</th>
+              <th class="p-3">动作信号</th>
+              <th class="p-3">建议仓位 / 金额(AUD)</th>
+              <th class="p-3">建议股数</th>
+              <th class="p-3">现价 / 建议建仓区</th>
+              <th class="p-3">止损位 (-2.5×ATR)</th>
+              <th class="p-3">6M目标价 (预期收益)</th>
+              <th class="p-3">核心催化剂 / 新闻标题</th>
+            </tr>
+          </thead>
+          <tbody id="grokbot-signals-tbody" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <script>
@@ -306,7 +408,7 @@
     }
 
     function switchTab(tab) {
-      const tabs = ['overview','us-screener','asx-screener','cross-market','factors','backtest','portfolio','agents','experiments','data-health'];
+      const tabs = ['overview','us-screener','asx-screener','cross-market','factors','backtest','portfolio','agents','experiments','data-health','grokbot'];
       tabs.forEach(t => {
         document.getElementById(`sec-${t}`).classList.add('hidden');
         document.getElementById(`tab-${t}`).classList.remove('active');
@@ -324,6 +426,7 @@
       if (tab === 'agents') loadAgentReport();
       if (tab === 'experiments') loadExperiments();
       if (tab === 'data-health') loadDataHealth();
+      if (tab === 'grokbot') loadGrokBot(false);
     }
 
     async function loadOverview() {
@@ -713,6 +816,84 @@
           <td class="p-2.5 text-emerald-400">${a.status}</td>
         </tr>
       `).join('');
+    }
+
+    let latestGrokBotPrompt = '';
+
+    async function loadGrokBot(refresh = false) {
+      const btn = document.getElementById('btn-refresh-grokbot');
+      if (refresh && btn) {
+        btn.textContent = '⏳ 正在实时扫描 108 只美/澳股...';
+        btn.disabled = true;
+      }
+      try {
+        const res = await fetch(`/api/grokbot/signals?refresh=${refresh ? 'true' : 'false'}&capital_aud=100000&top_us=5&top_asx=5`).then(r => r.json());
+        document.getElementById('grokbot-gen-time').textContent = `生成时间: ${res.generated_at_aest || res.generated_at_utc || '--'} | 扫描范围: ${res.universe_scanned || 108} 股`;
+        document.getElementById('grokbot-FX-badge').textContent = `AUD/USD: ${res.audusd_rate || '--'} | 总资金: $${(res.capital_aud || 100000).toLocaleString()} AUD`;
+
+        const codes = (res.signals || []).map(s => s.moomoo_code).join(', ');
+        latestGrokBotPrompt = [
+          `请执行【Colab 量化引擎 × Moomoo 实时盯盘与模拟盘核验】任务：`,
+          `1. 读取本地量化信号文件：/Users/davidshizw/Documents/GitHub/stock-colab/data_store/grokbot_latest_signals.json（或运行 /Users/davidshizw/Documents/GitHub/stock-colab/scripts/grokbot_signal.sh 刷新）。`,
+          `2. 使用你的 moomoo MCP 工具（严格遵守只读规则，不执行实盘下单），查询以下 10 只共振潜力股的最新实时报价与盘口深度：${codes}。`,
+          `3. 对比当前 Moomoo 实时现价是否处于信号文件中的建议建仓区间 (entry_zone_low ~ entry_zone_high)，检查是否触及 2.5×ATR 止损位 (stop_loss_price)，并输出今日盯盘操作表！`
+        ].join('\n');
+
+        document.getElementById('grokbot-prompt-box').textContent = latestGrokBotPrompt;
+
+        const tbody = document.getElementById('grokbot-signals-tbody');
+        tbody.innerHTML = (res.signals || []).map(s => {
+          const actionCls = s.action.includes('STRONG_BUY')
+            ? 'bg-emerald-900/70 text-emerald-300 border border-emerald-600'
+            : (s.action.includes('ACCUMULATE') ? 'bg-blue-900/70 text-blue-300 border border-blue-600' : 'bg-gray-800 text-gray-300');
+          const mktColor = s.market === 'US' ? 'text-blue-400' : 'text-amber-400';
+          return `
+            <tr class="hover:bg-gray-800/50">
+              <td class="p-3 font-mono font-bold ${mktColor}">${s.moomoo_code}</td>
+              <td class="p-3">
+                <div class="font-semibold text-white">${s.name}</div>
+                <div class="text-xs text-gray-400">${s.market} · ${s.sector}</div>
+              </td>
+              <td class="p-3 font-semibold">${s.quant_potential_score}</td>
+              <td class="p-3 font-semibold text-indigo-300">${s.grok_sentiment_score} <span class="text-xs text-gray-400">(${s.sentiment_label})</span></td>
+              <td class="p-3 font-bold text-emerald-400 text-base">${s.combined_conviction}</td>
+              <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-semibold ${actionCls}">${s.action}</span></td>
+              <td class="p-3">
+                <div class="font-semibold text-white">${(s.target_weight * 100).toFixed(1)}%</div>
+                <div class="text-xs text-gray-400">$${Number(s.allocated_aud).toLocaleString()} AUD</div>
+              </td>
+              <td class="p-3 font-mono font-semibold text-white">${s.suggested_shares} 股</td>
+              <td class="p-3 font-mono">
+                <div class="text-white font-semibold">${s.currency} ${s.current_price}</div>
+                <div class="text-xs text-gray-400">[${s.entry_zone_low} ~ ${s.entry_zone_high}]</div>
+              </td>
+              <td class="p-3 font-mono text-red-400 font-semibold">${s.currency} ${s.stop_loss_price}</td>
+              <td class="p-3 font-mono">
+                <div class="text-emerald-400 font-semibold">${s.currency} ${s.target_price_6m}</div>
+                <div class="text-xs text-emerald-300">+${s.expected_upside_6m_pct}%</div>
+              </td>
+              <td class="p-3 text-xs text-gray-300 max-w-xs">
+                <div class="font-medium text-indigo-200 truncate" title="${s.catalyst_summary}">${s.catalyst_summary}</div>
+                <div class="text-gray-400 truncate mt-0.5" title="${s.top_headline}">${s.top_headline}</div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } finally {
+        if (btn) {
+          btn.textContent = '🔄 重新运行 108 股扫描 + 情绪共振';
+          btn.disabled = false;
+        }
+      }
+    }
+
+    async function copyGrokBotPrompt() {
+      if (!latestGrokBotPrompt) await loadGrokBot(false);
+      await navigator.clipboard.writeText(latestGrokBotPrompt);
+      const btn = document.getElementById('btn-copy-grokbot');
+      const old = btn.textContent;
+      btn.textContent = '✅ 已复制到剪贴板！请去 Grok Bot 按 Cmd+V';
+      setTimeout(() => { btn.textContent = old; }, 3000);
     }
 
     // Initial bootstrap
