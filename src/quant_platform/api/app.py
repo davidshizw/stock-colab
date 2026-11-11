@@ -325,6 +325,33 @@ def create_app(store: MarketDataStore | None = None) -> FastAPI:
             "recent_ingestions": audit_rows,
         }
 
+    @app.get("/api/stock/deep-dive")
+    def get_stock_deep_dive(
+        symbol: str = Query(default="EML"),
+        prefer_market: str = Query(default="AUTO"),
+        refresh: bool = Query(default=False),
+    ) -> dict[str, Any]:
+        """Run full-metric + market + peer + technical + sentiment deep-dive analysis on any stock ticker."""
+        import json as _json
+
+        from quant_platform.screener.deep_dive import StockDeepDiveAnalyzer
+
+        clean_tag = symbol.strip().upper().replace(".", "_")
+        cache_file = Path(f"./data_store/deep_dive_{clean_tag}.json")
+        if not refresh and cache_file.exists():
+            try:
+                return _json.loads(cache_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        analyzer = StockDeepDiveAnalyzer()
+        report = analyzer.analyze(symbol, prefer_market=prefer_market)
+        try:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            cache_file.write_text(_json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        return report
+
     @app.get("/api/grokbot/signals")
     def get_grokbot_signals(refresh: bool = Query(default=False)) -> dict[str, Any]:
         import json as _json
@@ -364,6 +391,19 @@ def create_app(store: MarketDataStore | None = None) -> FastAPI:
                 "result": {
                     "tools": [
                         {
+                            "name": "analyze_single_stock",
+                            "description": "Perform a full-metric + cross-market + peer + technical + Grok sentiment deep dive on ANY stock ticker (e.g., 'EML', 'EML.AX', 'NVDA', 'BHP.AX').",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "symbol": {"type": "string", "description": "Ticker symbol such as EML, EML.AX, NVDA"},
+                                    "prefer_market": {"type": "string", "description": "AUTO, ASX, or US"},
+                                    "refresh": {"type": "boolean"},
+                                },
+                                "required": ["symbol"],
+                            },
+                        },
+                        {
                             "name": "get_grokbot_moomoo_signals",
                             "description": "Get Top 10 US & ASX potential stocks with Moomoo ticker codes (US.xxx / AU.xxx), entry zones, 2.5x ATR stop-loss, 6M target prices, and Grok news sentiment.",
                             "inputSchema": {"type": "object", "properties": {"refresh": {"type": "boolean"}}},
@@ -380,7 +420,13 @@ def create_app(store: MarketDataStore | None = None) -> FastAPI:
             params = payload.get("params", {})
             t_name = params.get("name", "")
             t_args = params.get("arguments", {}) or {}
-            if t_name == "get_grokbot_moomoo_signals":
+            if t_name == "analyze_single_stock":
+                data = get_stock_deep_dive(
+                    symbol=str(t_args.get("symbol", "EML")),
+                    prefer_market=str(t_args.get("prefer_market", "AUTO")),
+                    refresh=bool(t_args.get("refresh", False)),
+                )
+            elif t_name == "get_grokbot_moomoo_signals":
                 data = get_grokbot_signals(refresh=bool(t_args.get("refresh", False)))
             elif t_name == "get_us_asx_overnight_lead_lag":
                 data = get_cross_market_intelligence()

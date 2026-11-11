@@ -237,18 +237,25 @@
       </div>
     </section>
 
-    <!-- 8. AI Research Reports -->
+    <!-- 8. Single-Stock Full-Metric Deep Dive & AI Research Reports -->
     <section id="sec-agents" class="hidden space-y-4">
-      <div class="card p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="card p-4 flex flex-wrap items-center justify-between gap-4 border-blue-500/40 bg-gradient-to-r from-gray-900 via-blue-950/20 to-gray-900">
         <div>
-          <h2 class="text-sm font-semibold text-white">多智能体协同投研报告 (7 Specialized Agents + Deterministic Verification)</h2>
-          <p class="text-xs text-gray-400">所有财务比率、IC、期权 Greeks 与回测指标均由确定性工具计算并附带数据表溯源，严禁大模型编造数字</p>
+          <h2 class="text-sm font-bold text-white">🔍 个股全量指标 + 跨市场深度诊断引擎 (6-Dimension Full-Metric Deep Dive)</h2>
+          <p class="text-xs text-gray-400">输入任意美股/澳股代码（如 <code class="text-amber-300">EML</code>、<code class="text-amber-300">EML.AX</code>、<code class="text-blue-300">NVDA</code>、<code class="text-amber-300">SFR.AX</code>），自动拉取实时估值、3年三表、全量技术指标、跨市场 Beta、同行横向对比与 Grok 催化剂</p>
         </div>
-        <div class="flex items-center gap-2">
-          <input id="agent-symbol" type="text" placeholder="输入代码如 BHP.AX 或 NVDA" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-xs" />
-          <button onclick="loadAgentReport()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold">生成证据驱动报告</button>
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="agent-symbol" type="text" value="EML" placeholder="输入代码如 EML, EML.AX, NVDA" class="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-xs font-mono text-white w-44" />
+          <select id="agent-prefer-market" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-xs">
+            <option value="AUTO">自动识别 (ASX/US)</option>
+            <option value="ASX">优先澳股 (ASX)</option>
+            <option value="US">优先美股 (US)</option>
+          </select>
+          <button onclick="loadAgentReport(false)" id="btn-deep-dive" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold text-white">运行全量深度分析</button>
+          <button onclick="loadAgentReport(true)" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-xs text-gray-300">强制刷新实时数据</button>
         </div>
       </div>
+      <div id="deep-dive-container" class="space-y-4"></div>
       <div id="agent-report-container" class="space-y-4"></div>
     </section>
 
@@ -698,8 +705,191 @@
       });
     }
 
-    async function loadAgentReport() {
-      const sym = document.getElementById('agent-symbol').value.trim();
+    async function loadAgentReport(refresh = false) {
+      const sym = (document.getElementById('agent-symbol').value.trim() || 'EML');
+      const preferMkt = (document.getElementById('agent-prefer-market')?.value || 'AUTO');
+      const btn = document.getElementById('btn-deep-dive');
+      if (btn) {
+        btn.textContent = `⏳ 正在全量分析 ${sym}...`;
+        btn.disabled = true;
+      }
+
+      try {
+        const dd = await fetch(`/api/stock/deep-dive?symbol=${encodeURIComponent(sym)}&prefer_market=${preferMkt}&refresh=${refresh}`).then(r => r.json());
+        const pv = dd.profile_and_valuation || {};
+        const fh = dd.financial_health || {};
+        const tc = dd.technicals || {};
+        const sc = dd.scorecard_and_execution || {};
+        const sn = dd.sentiment_and_catalysts || {};
+        const alts = dd.alternate_listings || [];
+
+        const altHtml = alts.length ? `
+          <div class="p-3 rounded bg-amber-950/40 border border-amber-700/60 text-xs flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span class="font-bold text-amber-300">💡 跨市场同名代码提示：</span>
+              当前主分析标的为 <strong>${dd.symbol} (${pv.name} · ${pv.exchange})</strong>。同时检测到另一市场同名代码：
+              ${alts.map(a => `<strong>${a.symbol} (${a.name} · ${a.exchange}, 现价 ${a.currency} ${a.price}, PE ${a.trailing_pe || '--'}x, PB ${a.price_to_book || '--'}x)</strong>`).join('；')}
+            </div>
+            <button onclick="document.getElementById('agent-prefer-market').value='${dd.market === 'ASX' ? 'US' : 'ASX'}'; loadAgentReport(true);" class="px-2.5 py-1 bg-amber-700 hover:bg-amber-600 rounded text-white font-semibold">切换分析 ${alts[0].symbol}</button>
+          </div>
+        ` : '';
+
+        document.getElementById('deep-dive-container').innerHTML = `
+          ${altHtml}
+          <!-- Top Executive Scorecard Card -->
+          <div class="card p-5 space-y-4 border-l-4 border-l-emerald-500">
+            <div class="flex flex-wrap justify-between items-start gap-4 border-b border-gray-800 pb-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded bg-blue-900/60 text-blue-300 text-xs font-mono font-bold">${dd.moomoo_code}</span>
+                  <h3 class="text-lg font-bold text-white">${pv.name} (${dd.symbol})</h3>
+                  <span class="text-xs text-gray-400">${pv.exchange} · ${pv.sector} · ${pv.industry}</span>
+                </div>
+                <p class="text-xs text-gray-400 mt-1 max-w-4xl">${pv.business_summary || ''}</p>
+              </div>
+              <div class="text-right">
+                <div class="text-2xl font-bold text-white font-mono">${pv.currency} ${pv.price}</div>
+                <div class="text-xs mt-0.5">1D: ${fmtPct((tc.ret_1d_pct || 0)/100)} | 1M: ${fmtPct((tc.ret_1m_pct || 0)/100)} | 1Y: ${fmtPct((tc.ret_12m_pct || 0)/100)}</div>
+              </div>
+            </div>
+
+            <!-- 5-Pillar Scores & Execution Plan -->
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <div class="p-3 rounded bg-gray-900/80 border border-gray-800">
+                <div class="text-xs text-gray-400">五维综合评分</div>
+                <div class="text-xl font-bold text-emerald-400 mt-0.5">${sc.composite_score} <span class="text-xs text-gray-400">/ 100</span></div>
+                <div class="text-xs text-indigo-300 truncate mt-0.5">${sc.verdict}</div>
+              </div>
+              <div class="p-3 rounded bg-gray-900/80 border border-gray-800">
+                <div class="text-xs text-gray-400">估值分 / 质量分</div>
+                <div class="text-base font-bold text-white mt-0.5">${sc.value_score} <span class="text-gray-500">/</span> ${sc.quality_score}</div>
+                <div class="text-xs text-gray-400">Fwd PE: ${pv.forward_pe ?? '--'}x | PB: ${pv.price_to_book ?? '--'}x</div>
+              </div>
+              <div class="p-3 rounded bg-gray-900/80 border border-gray-800">
+                <div class="text-xs text-gray-400">动量分 / 技术分</div>
+                <div class="text-base font-bold text-white mt-0.5">${sc.momentum_score} <span class="text-gray-500">/</span> ${sc.technical_score}</div>
+                <div class="text-xs text-gray-400">${tc.trend_regime}</div>
+              </div>
+              <div class="p-3 rounded bg-gray-900/80 border border-gray-800">
+                <div class="text-xs text-gray-400">Grok 情绪与催化</div>
+                <div class="text-base font-bold text-indigo-300 mt-0.5">${sc.catalyst_score} <span class="text-xs">(${sn.sentiment_label})</span></div>
+                <div class="text-xs text-gray-400">分析师目标均值: ${pv.currency} ${sn.target_mean ?? '--'}</div>
+              </div>
+              <div class="p-3 rounded bg-gray-900/80 border border-gray-800">
+                <div class="text-xs text-gray-400">建议建仓区间 & 突破位</div>
+                <div class="text-sm font-bold text-emerald-300 font-mono mt-0.5">[${sc.entry_zone_low} ~ ${sc.entry_zone_high}]</div>
+                <div class="text-xs text-gray-400 font-mono">右侧突破: ${sc.right_side_breakout_trigger}</div>
+              </div>
+              <div class="p-3 rounded bg-gray-900/80 border border-gray-800">
+                <div class="text-xs text-gray-400">硬止损 (-2.5×ATR) & 盈亏比</div>
+                <div class="text-sm font-bold text-red-400 font-mono mt-0.5">止损: ${sc.stop_loss_2_5_atr}</div>
+                <div class="text-xs text-emerald-300 font-mono">目标: ${sc.target_2_consensus} (R/R ${sc.risk_reward_ratio}x)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Price & Moving Average Chart + Technical Matrix -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="card p-4 lg:col-span-2">
+              <h4 class="text-xs font-semibold uppercase text-gray-400 mb-2">📈 近 120 个交易日 K 线收盘价与均线结构 (Close / SMA20 / SMA50)</h4>
+              <div id="chart-deep-dive-price" style="height: 310px;"></div>
+            </div>
+            <div class="card p-4 space-y-2 text-xs">
+              <h4 class="text-xs font-semibold uppercase text-blue-400 mb-2">⚙️ 全量技术面与风险微观指标</h4>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>趋势状态</span><span class="font-semibold text-white">${tc.trend_regime}</span></div>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>SMA20 / SMA50 / SMA200</span><span class="font-mono">${tc.sma_20} / ${tc.sma_50} / ${tc.sma_200}</span></div>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>RSI(14) / Stoch(%K, %D)</span><span class="font-mono">${tc.rsi_14} / (${tc.stoch_k}, ${tc.stoch_d})</span></div>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>MACD (Line / Sig / Hist)</span><span class="font-mono">${tc.macd_line} / ${tc.macd_signal} / ${tc.macd_histogram}</span></div>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>布林带 (下轨 ~ 上轨 | %B)</span><span class="font-mono">[${tc.bollinger_lower} ~ ${tc.bollinger_upper}] (${tc.bollinger_pct_b})</span></div>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>ATR(14) 波幅 / 20D年化波动</span><span class="font-mono">${tc.atr_14} (${tc.atr_pct}%) / ${tc.vol_20d_ann_pct}%</span></div>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>1Y 最大回撤 / VaR(95%)</span><span class="font-mono text-red-400">${tc.max_drawdown_1y_pct}% / ${tc.var_95_daily_pct}%</span></div>
+              <div class="flex justify-between py-1 border-b border-gray-800"><span>5D/20D 量比 / 日均成交额</span><span class="font-mono text-emerald-300">${tc.volume_surge_5d_vs_20d}x / $${Number(tc.avg_dollar_turnover_20d).toLocaleString()}</span></div>
+              <div class="flex justify-between py-1"><span>52周区间 / 支撑与阻力位</span><span class="font-mono">[${tc.low_52w} ~ ${tc.high_52w}] | S:${tc.support_1_20d_low} R:${tc.resistance_1_20d_high}</span></div>
+            </div>
+          </div>
+
+          <!-- Financials & Multi-Year Statements + Peer Comparison -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card p-4 overflow-x-auto">
+              <h4 class="text-xs font-semibold uppercase text-emerald-400 mb-2">💰 财务健康度与近 3 年核心财报 (毛利率 ${fh.gross_margin_pct}% | 现金占市值 ${fh.cash_to_market_cap_pct ?? '--'}% | 净债务 $${((fh.net_debt||0)/1e6).toFixed(1)}M)</h4>
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-gray-800">
+                    <th class="p-2">财年截止</th><th class="p-2">总营收</th><th class="p-2">毛利</th>
+                    <th class="p-2">净利息收入</th><th class="p-2">Norm. EBITDA</th><th class="p-2">净利润</th><th class="p-2">自由现金流</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800 font-mono text-xs">
+                  ${(fh.annual_statements || []).map(yr => `
+                    <tr>
+                      <td class="p-2 font-semibold text-blue-300">${yr.period_ending}</td>
+                      <td class="p-2">${yr.total_revenue ? (yr.total_revenue/1e6).toFixed(1)+'M' : '--'}</td>
+                      <td class="p-2">${yr.gross_profit ? (yr.gross_profit/1e6).toFixed(1)+'M' : '--'}</td>
+                      <td class="p-2 text-amber-300">${yr.net_interest_income ? (yr.net_interest_income/1e6).toFixed(1)+'M' : '--'}</td>
+                      <td class="p-2">${yr.normalized_ebitda ? (yr.normalized_ebitda/1e6).toFixed(1)+'M' : '--'}</td>
+                      <td class="p-2 ${yr.net_income >= 0 ? 'text-emerald-400' : 'text-red-400'}">${yr.net_income ? (yr.net_income/1e6).toFixed(1)+'M' : '--'}</td>
+                      <td class="p-2">${yr.free_cash_flow ? (yr.free_cash_flow/1e6).toFixed(1)+'M' : '--'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card p-4 overflow-x-auto">
+              <h4 class="text-xs font-semibold uppercase text-amber-400 mb-2">🏆 同赛道直接竞争对手横向对比 (Sector Peer Benchmarking)</h4>
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-gray-800">
+                    <th class="p-2">代码</th><th class="p-2">公司</th><th class="p-2">现价</th>
+                    <th class="p-2">市值(M)</th><th class="p-2">Fwd PE</th><th class="p-2">PB</th><th class="p-2">毛利率</th><th class="p-2">ROE</th><th class="p-2">目标价空间</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800 text-xs">
+                  ${(dd.peer_comparison || []).map(p => `
+                    <tr class="${p.is_target ? 'bg-blue-950/40 font-bold' : 'hover:bg-gray-800/40'}">
+                      <td class="p-2 font-mono ${p.is_target ? 'text-emerald-400' : 'text-blue-400'}">${p.symbol}</td>
+                      <td class="p-2 truncate max-w-[120px]">${p.name}</td>
+                      <td class="p-2 font-mono">${p.price}</td>
+                      <td class="p-2 font-mono">${p.market_cap_m}M</td>
+                      <td class="p-2 font-mono">${p.forward_pe ?? '--'}x</td>
+                      <td class="p-2 font-mono">${p.price_to_book ?? '--'}x</td>
+                      <td class="p-2 font-mono">${p.gross_margin_pct ?? '--'}%</td>
+                      <td class="p-2 font-mono">${p.roe_pct ?? '--'}%</td>
+                      <td class="p-2 font-mono text-emerald-300">${p.analyst_upside_pct !== null ? (p.analyst_upside_pct > 0 ? '+' : '') + p.analyst_upside_pct + '%' : '--'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        // Render 120d price & MA chart
+        const series120 = dd.chart_series_120d || [];
+        if (series120.length && document.getElementById('chart-deep-dive-price')) {
+          const pChart = echarts.init(document.getElementById('chart-deep-dive-price'), 'dark');
+          charts['chart-deep-dive-price'] = pChart;
+          pChart.setOption({
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['收盘价 (Close)', 'SMA 20', 'SMA 50'], top: 0 },
+            grid: { left: 50, right: 20, top: 32, bottom: 28 },
+            xAxis: { type: 'category', data: series120.map(x => x.date) },
+            yAxis: { type: 'value', scale: true },
+            series: [
+              { name: '收盘价 (Close)', type: 'line', data: series120.map(x => x.close), showSymbol: false, lineStyle: { width: 2.2, color: '#38bdf8' } },
+              { name: 'SMA 20', type: 'line', data: series120.map(x => x.sma20), showSymbol: false, lineStyle: { width: 1.5, type: 'dashed', color: '#fbbf24' } },
+              { name: 'SMA 50', type: 'line', data: series120.map(x => x.sma50), showSymbol: false, lineStyle: { width: 1.5, color: '#a855f7' } }
+            ]
+          });
+        }
+      } finally {
+        if (btn) {
+          btn.textContent = '运行全量深度分析';
+          btn.disabled = false;
+        }
+      }
+
       const q = sym ? `?symbol=${encodeURIComponent(sym)}` : '';
       const rep = await fetch(`/api/agents/report${q}`).then(r => r.json());
 

@@ -152,6 +152,10 @@ def main() -> None:
     gb_p.add_argument("--top-us", type=int, default=5)
     gb_p.add_argument("--top-asx", type=int, default=5)
 
+    an_p = sub.add_parser("analyze", help="Run full-metric + cross-market + peer + sentiment deep-dive on any stock ticker")
+    an_p.add_argument("symbol", help="Ticker symbol (e.g. EML, EML.AX, AU.EML, NVDA, BHP.AX)")
+    an_p.add_argument("--market", default="AUTO", choices=["AUTO", "ASX", "US"])
+
     args = parser.parse_args()
     if args.command == "serve":
         uvicorn.run("quant_platform.api.app:app", host=args.host, port=args.port, reload=False)
@@ -167,6 +171,18 @@ def main() -> None:
         gen = GrokBotSignalGenerator(capital_aud=args.capital_aud)
         packet = gen.generate_signal_packet(top_us_n=args.top_us, top_asx_n=args.top_asx)
         print(json.dumps(packet, indent=2, ensure_ascii=False))
+    elif args.command == "analyze":
+        from pathlib import Path
+
+        from quant_platform.screener.deep_dive import StockDeepDiveAnalyzer
+
+        analyzer = StockDeepDiveAnalyzer()
+        rep = analyzer.analyze(args.symbol, prefer_market=args.market)
+        clean_tag = args.symbol.strip().upper().replace(".", "_")
+        out_path = Path(f"./data_store/deep_dive_{clean_tag}.json")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(rep, indent=2, ensure_ascii=False))
     else:
         mode = getattr(args, "mode", "fixture")
         run_end_to_end_demo(mode=mode)
