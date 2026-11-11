@@ -29,8 +29,12 @@ def run_end_to_end_demo(mode: str = "fixture") -> dict[str, object]:
         parquet_dir=settings.data_dir / "parquet",
     )
 
-    end_d = date(2026, 11, 6)
+    end_d = date.today() if mode == "yfinance" else date(2026, 11, 6)
     start_d = end_d - timedelta(days=500)
+    if mode == "yfinance":
+        store.conn.cursor().execute("DELETE FROM daily_prices WHERE source = 'fixture'")
+        store.conn.cursor().execute("DELETE FROM fundamentals_pit WHERE source = 'fixture'")
+        store.conn.cursor().execute("DELETE FROM factor_values")
 
     print("=" * 88)
     print("1. [DATA INGESTION] Ingesting US (NYSE/Nasdaq) & Australian (ASX 200) Market Data...")

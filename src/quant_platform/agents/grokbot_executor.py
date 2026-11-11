@@ -96,6 +96,11 @@ class GrokBotSignalGenerator:
             else:
                 signal_action = "BUY_GARP_VALUE (低估高成长·逢低吸纳)"
 
+            q_score_100 = round(float(np.clip(55.0 + float(r.get("final_potential_score", 0.5)) * 22.0, 20.0, 98.0)), 1)
+            g_score_100 = round(float(np.clip(50.0 + sentiment * 45.0, 15.0, 96.0)), 1)
+            conv_100 = round(0.70 * q_score_100 + 0.30 * g_score_100, 1)
+            sent_label = "BULLISH" if sentiment >= 0.08 else ("CAUTIOUS" if sentiment <= -0.05 else "NEUTRAL+")
+
             order_plans.append(
                 {
                     "fused_rank": int(r["fused_rank"]),
@@ -103,30 +108,48 @@ class GrokBotSignalGenerator:
                     "moomoo_code": mm_code,
                     "name": r.get("name", sym),
                     "market": r.get("market", "US"),
+                    "sector": r.get("sector", "Technology"),
                     "currency": "AUD" if sym.endswith(".AX") else "USD",
                     "signal_action": signal_action,
+                    "action": signal_action,
+                    "quant_potential_score": q_score_100,
+                    "grok_sentiment_score": g_score_100,
+                    "sentiment_label": sent_label,
+                    "combined_conviction": conv_100,
                     "target_weight_pct": round(float(wt) * 100.0, 2),
+                    "target_weight": round(float(wt), 4),
                     "target_alloc_aud": alloc_aud,
+                    "allocated_aud": alloc_aud,
                     "suggested_paper_shares": est_shares,
+                    "suggested_shares": est_shares,
                     "reference_close": close_p,
+                    "current_price": close_p,
                     "entry_zone": f"{entry_low} ~ {entry_high}",
+                    "entry_zone_low": entry_low,
+                    "entry_zone_high": entry_high,
                     "stop_loss_price": stop_loss,
                     "target_6m_price": target_6m,
+                    "target_price_6m": target_6m,
                     "expected_6m_return_pct": round(exp_6m * 100.0, 2),
+                    "expected_upside_6m_pct": round(exp_6m * 100.0, 1),
                     "risk_reward_ratio": risk_reward,
                     "forward_pe": r.get("forward_pe"),
                     "revenue_growth_pct": round(float(r.get("revenue_growth", 0.0)) * 100.0, 1),
-                    "grok_sentiment_score": sentiment,
+                    "catalyst_summary": r.get("grok_catalyst_summary", ""),
                     "latest_headline": r.get("latest_headline", ""),
+                    "top_headline": r.get("latest_headline", ""),
                     "risk_note": r.get("grok_risk_warning", ""),
                 }
             )
 
         packet = {
             "generated_at_utc": datetime.now(UTC).isoformat(),
+            "generated_at_aest": datetime.now().strftime("%Y-%m-%d %H:%M:%S AEST"),
             "capital_base_aud": self.capital_aud,
+            "capital_aud": self.capital_aud,
             "audusd_rate": self.audusd_rate,
             "total_market_scanned": scan_res["total_scanned"],
+            "universe_scanned": scan_res["total_scanned"],
             "moomoo_mcp_watchlist": moomoo_watchlist,
             "moomoo_safety_policy": "READ_ONLY_QUOTES_AND_PORTFOLIO_CHECK_plus_PAPER_TRADING_PLAN",
             "grokbot_instructions": (

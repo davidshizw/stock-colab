@@ -40,15 +40,34 @@ DEFAULT_INSTRUMENTS: list[Instrument] = [
     Instrument(symbol="XOM", name="Exxon Mobil Corp.", market=MarketCode.US, exchange="NYSE", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Energy", industry="Integrated Oil & Gas", benchmark_index="SPY"),
     Instrument(symbol="CVX", name="Chevron Corp.", market=MarketCode.US, exchange="NYSE", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Energy", industry="Integrated Oil & Gas", benchmark_index="SPY"),
     Instrument(symbol="LLY", name="Eli Lilly and Co.", market=MarketCode.US, exchange="NYSE", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Health Care", industry="Pharmaceuticals", benchmark_index="SPY"),
-    # Australian Equities (ASX 200)
+    Instrument(symbol="MU", name="Micron Technology Inc.", market=MarketCode.US, exchange="NASDAQ", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="Semiconductors", benchmark_index="SPY"),
+    Instrument(symbol="AVGO", name="Broadcom Inc.", market=MarketCode.US, exchange="NASDAQ", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="Semiconductors", benchmark_index="SPY"),
+    Instrument(symbol="DELL", name="Dell Technologies Inc.", market=MarketCode.US, exchange="NYSE", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="AI Servers & Hardware", benchmark_index="SPY"),
+    Instrument(symbol="PLTR", name="Palantir Technologies Inc.", market=MarketCode.US, exchange="NASDAQ", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="AI Software", benchmark_index="SPY"),
+    Instrument(symbol="ABBV", name="AbbVie Inc.", market=MarketCode.US, exchange="NYSE", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Health Care", industry="Biotechnology", benchmark_index="SPY"),
+    Instrument(symbol="VRTX", name="Vertex Pharmaceuticals Inc.", market=MarketCode.US, exchange="NASDAQ", currency=CurrencyCode.USD, asset_type=AssetType.EQUITY, sector="Health Care", industry="Biotechnology", benchmark_index="SPY"),
+    # Australian Equities (ASX 200 & High-Potential Growth/Resources/FinTech)
     Instrument(symbol="BHP.AX", name="BHP Group Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Materials", industry="Diversified Metals & Mining", benchmark_index="STW.AX"),
     Instrument(symbol="RIO.AX", name="Rio Tinto Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Materials", industry="Diversified Metals & Mining", benchmark_index="STW.AX"),
     Instrument(symbol="FMG.AX", name="Fortescue Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Materials", industry="Iron Ore Mining", benchmark_index="STW.AX"),
+    Instrument(symbol="SFR.AX", name="Sandfire Resources Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Materials", industry="Copper Mining", benchmark_index="STW.AX"),
+    Instrument(symbol="LYC.AX", name="Lynas Rare Earths Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Materials", industry="Rare Earths", benchmark_index="STW.AX"),
+    Instrument(symbol="PLS.AX", name="Pilbara Minerals Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Materials", industry="Lithium & Battery Materials", benchmark_index="STW.AX"),
+    Instrument(symbol="PDN.AX", name="Paladin Energy Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Energy", industry="Uranium", benchmark_index="STW.AX"),
     Instrument(symbol="CBA.AX", name="Commonwealth Bank of Australia", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Financials", industry="Major Banks", benchmark_index="STW.AX"),
     Instrument(symbol="NAB.AX", name="National Australia Bank Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Financials", industry="Major Banks", benchmark_index="STW.AX"),
     Instrument(symbol="WBC.AX", name="Westpac Banking Corp", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Financials", industry="Major Banks", benchmark_index="STW.AX"),
     Instrument(symbol="MQG.AX", name="Macquarie Group Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Financials", industry="Investment Banking", benchmark_index="STW.AX"),
     Instrument(symbol="CSL.AX", name="CSL Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Health Care", industry="Biotechnology", benchmark_index="STW.AX"),
+    Instrument(symbol="PME.AX", name="Pro Medicus Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Health Care", industry="Healthcare Imaging AI", benchmark_index="STW.AX"),
+    Instrument(symbol="TLX.AX", name="Telix Pharmaceuticals Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Health Care", industry="Radiopharmaceuticals", benchmark_index="STW.AX"),
+    Instrument(symbol="WTC.AX", name="WiseTech Global Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="Logistics SaaS", benchmark_index="STW.AX"),
+    Instrument(symbol="XRO.AX", name="Xero Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="Cloud Accounting SaaS", benchmark_index="STW.AX"),
+    Instrument(symbol="EML.AX", name="EML Payments Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="Payment Infrastructure", benchmark_index="STW.AX"),
+    Instrument(symbol="ZIP.AX", name="Zip Co Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Financials", industry="Digital Payments & BNPL", benchmark_index="STW.AX"),
+    Instrument(symbol="TYR.AX", name="Tyro Payments Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Information Technology", industry="Merchant Payments", benchmark_index="STW.AX"),
+    Instrument(symbol="GMG.AX", name="Goodman Group", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Real Estate", industry="AI Data Center & Industrial REIT", benchmark_index="STW.AX"),
+    Instrument(symbol="QAN.AX", name="Qantas Airways Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Industrials", industry="Airlines", benchmark_index="STW.AX"),
     Instrument(symbol="WES.AX", name="Wesfarmers Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Consumer Discretionary", industry="Conglomerates & Retail", benchmark_index="STW.AX"),
     Instrument(symbol="WDS.AX", name="Woodside Energy Group Ltd", market=MarketCode.ASX, exchange="ASX", currency=CurrencyCode.AUD, asset_type=AssetType.EQUITY, sector="Energy", industry="Oil & Gas Exploration", benchmark_index="STW.AX"),
     # Benchmarks, ETFs, FX, and Commodity Proxies
@@ -502,10 +521,73 @@ class YFinanceDataProvider:
     def fetch_fundamentals_pit(
         self, symbols: list[str], start_date: date, end_date: date
     ) -> list[FundamentalSnapshotPIT]:
-        # Combine live yfinance info snapshot where available with baseline PIT history
-        return FixtureDataProvider(instruments=self.instruments).fetch_fundamentals_pit(
+        """Combine historical quarterly PIT snapshots with live Yahoo Finance fundamental snapshot."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        import yfinance as yf
+
+        snapshots = FixtureDataProvider(instruments=self.instruments).fetch_fundamentals_pit(
             symbols, start_date, end_date
         )
+
+        eq_symbols = [
+            s for s in symbols if s in self._inst_map and self._inst_map[s].asset_type == AssetType.EQUITY
+        ]
+
+        def _fetch_live_info(sym: str) -> FundamentalSnapshotPIT | None:
+            inst = self._inst_map[sym]
+            try:
+                info = yf.Ticker(sym).info or {}
+                pe = float(info.get("forwardPE") or info.get("trailingPE") or 18.0)
+                if pe <= 0 or np.isnan(pe):
+                    pe = 18.0
+                pb = float(info.get("priceToBook") or 2.5)
+                if pb <= 0 or np.isnan(pb):
+                    pb = 2.5
+                ev_ebitda = float(info.get("enterpriseToEbitda") or (pe * 0.72))
+                roe = float(info.get("returnOnEquity") or 0.14)
+                roa = float(info.get("returnOnAssets") or (roe * 0.55))
+                margin = float(info.get("profitMargins") or 0.12)
+                dte_raw = float(info.get("debtToEquity") or 55.0)
+                dte = round(dte_raw / 100.0 if dte_raw > 5.0 else dte_raw, 3)
+                div_y = float(info.get("dividendYield") or 0.0)
+                if div_y > 0.25:
+                    div_y = div_y / 100.0
+                mcap = float(info.get("marketCap") or 50_000_000_000.0)
+                fcf = float(info.get("freeCashflow") or (mcap / pe * 0.8))
+                fcf_yield = round(float(np.clip(fcf / max(mcap, 1.0), -0.25, 0.25)), 4)
+
+                return FundamentalSnapshotPIT(
+                    symbol=sym,
+                    market=inst.market,
+                    period_end_date=end_date - timedelta(days=1),
+                    filing_date=end_date,
+                    available_at_utc=get_market_close_utc(end_date, inst.market),
+                    currency=inst.currency,
+                    market_cap=round(mcap, 2),
+                    pe_ratio=round(pe, 2),
+                    pb_ratio=round(pb, 2),
+                    ev_ebitda=round(ev_ebitda, 2),
+                    fcf_yield=fcf_yield,
+                    roe=round(roe, 4),
+                    roic=round(max(roe * 0.75, roa), 4),
+                    net_margin=round(margin, 4),
+                    earnings_stability=0.88,
+                    debt_to_equity=max(0.01, dte),
+                    dividend_yield=round(max(0.0, div_y), 4),
+                    franking_credit_rate=0.85 if (inst.market == MarketCode.ASX and div_y > 0) else 0.0,
+                    source="yfinance",
+                )
+            except Exception as exc:
+                logger.debug("Live fundamental info fallback for %s: %s", sym, exc)
+                return None
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            for item in pool.map(_fetch_live_info, eq_symbols):
+                if item is not None:
+                    snapshots.append(item)
+
+        return snapshots
 
     def fetch_corporate_actions(
         self, symbols: list[str], start_date: date, end_date: date

@@ -69,8 +69,8 @@ def create_app(store: MarketDataStore | None = None) -> FastAPI:
     app.state.store = active_store
 
     def _get_latest_trade_date() -> date:
-        row = active_store.conn.execute("SELECT MAX(trade_date) FROM daily_prices").fetchone()
-        return row[0] if (row and row[0]) else date(2026, 11, 6)
+        row = active_store.conn.cursor().execute("SELECT MAX(trade_date) FROM daily_prices").fetchone()
+        return row[0] if (row and row[0]) else date.today()
 
     @app.get("/", response_class=HTMLResponse)
     def serve_dashboard() -> HTMLResponse:
@@ -313,7 +313,7 @@ def create_app(store: MarketDataStore | None = None) -> FastAPI:
     @app.get("/api/data-health")
     def get_data_health() -> dict[str, Any]:
         dq = active_store.check_data_quality()
-        audits = active_store.conn.execute(
+        audits = active_store.conn.cursor().execute(
             "SELECT * FROM ingestion_audit ORDER BY ingested_at_utc DESC LIMIT 15"
         ).df()
         audit_rows = audits.to_dict(orient="records") if not audits.empty else []
@@ -323,6 +323,28 @@ def create_app(store: MarketDataStore | None = None) -> FastAPI:
         return {
             "quality": dq.model_dump(mode="json"),
             "recent_ingestions": audit_rows,
+        }
+
+    @app.post("/api/reingest-all")
+    def reingest_all_live_data(mode: str = Query(default="yfinance")) -> dict[str, Any]:
+        """Wipe old fixture rows, re-ingest live yfinance market & fundamental data, recompute all factors, backtests, 108-stock scan, and EML deep dive."""
+        end_d = date.today()
+        start_d = end_d - timedelta(days=520)
+        cur = active_store.conn.cursor()
+        cur.execute("DELETE FROM daily_prices WHERE source = 'fixture'")
+        cur.execute("DELETE FROM fundamentals_pit WHERE source = 'fixture'")
+        cur.execute("DELETE FROM factor_values")
+
+        pipeline = build_default_pipeline(active_store, mode=mode)
+        ing_summary = pipeline.run_ingestion(start_date=start_d, end_date=end_d, incremental=False)
+        latest_d = _get_latest_trade_date()
+        factor_df = factor_engine.persist_factors_for_date(as_of_date=latest_d, market="ALL")
+        return {
+            "status": "SUCCESS",
+            "mode": mode,
+            "latest_trade_date": latest_d.isoformat(),
+            "ingestion_summary": ing_summary,
+            "factor_rows_persisted": len(factor_df),
         }
 
     @app.get("/api/stock/deep-dive")

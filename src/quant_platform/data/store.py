@@ -270,12 +270,13 @@ class MarketDataStore:
         if active_only:
             clauses.append("is_active = TRUE")
         where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        return self.conn.execute(f"SELECT * FROM instruments {where_sql} ORDER BY symbol", params).df()
+        return self.conn.cursor().execute(f"SELECT * FROM instruments {where_sql} ORDER BY symbol", params).df()
 
     def get_active_universe_as_of(self, as_of_date: date, universe_name: str | None = None) -> list[str]:
         """Return symbols that were members of the universe on `as_of_date` (prevents survivorship bias)."""
+        cur = self.conn.cursor()
         if universe_name:
-            rows = self.conn.execute(
+            rows = cur.execute(
                 """
                 SELECT DISTINCT symbol
                 FROM universe_membership
@@ -287,7 +288,7 @@ class MarketDataStore:
                 [universe_name, as_of_date, as_of_date],
             ).fetchall()
         else:
-            rows = self.conn.execute(
+            rows = cur.execute(
                 """
                 SELECT DISTINCT symbol
                 FROM universe_membership
@@ -330,7 +331,7 @@ class MarketDataStore:
             {where_sql}
             ORDER BY p.trade_date, p.symbol
         """
-        df = self.conn.execute(query, params).df()
+        df = self.conn.cursor().execute(query, params).df()
         if not df.empty:
             df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
         return df
@@ -369,7 +370,7 @@ class MarketDataStore:
             WHERE rn = 1
             ORDER BY symbol
         """
-        return self.conn.execute(query, params).df()
+        return self.conn.cursor().execute(query, params).df()
 
     def get_corporate_actions(
         self,
@@ -385,30 +386,31 @@ class MarketDataStore:
             clauses.append("ex_date <= ?")
             params.append(end_date)
         where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        df = self.conn.execute(f"SELECT * FROM corporate_actions {where_sql} ORDER BY ex_date, symbol", params).df()
+        df = self.conn.cursor().execute(f"SELECT * FROM corporate_actions {where_sql} ORDER BY ex_date, symbol", params).df()
         if not df.empty:
             df["ex_date"] = pd.to_datetime(df["ex_date"]).dt.date
         return df
 
     def check_data_quality(self) -> DataQualityReport:
         """Inspect local store for missing data gaps, OHLC violations, staleness, and provenance."""
-        total_inst_row = self.conn.execute("SELECT COUNT(*) FROM instruments").fetchone()
+        cur = self.conn.cursor()
+        total_inst_row = cur.execute("SELECT COUNT(*) FROM instruments").fetchone()
         total_inst = int(total_inst_row[0]) if total_inst_row else 0
 
-        total_price_row = self.conn.execute("SELECT COUNT(*) FROM daily_prices").fetchone()
+        total_price_row = cur.execute("SELECT COUNT(*) FROM daily_prices").fetchone()
         total_prices = int(total_price_row[0]) if total_price_row else 0
 
-        total_fund_row = self.conn.execute("SELECT COUNT(*) FROM fundamentals_pit").fetchone()
+        total_fund_row = cur.execute("SELECT COUNT(*) FROM fundamentals_pit").fetchone()
         total_fund = int(total_fund_row[0]) if total_fund_row else 0
 
-        ohlc_row = self.conn.execute("""
+        ohlc_row = cur.execute("""
             SELECT COUNT(*) FROM daily_prices
             WHERE high < low OR high < open OR high < close OR low > open OR low > close OR close <= 0
         """).fetchone()
         ohlc_violations = int(ohlc_row[0]) if ohlc_row else 0
 
         # Check date gaps > 7 calendar days within active series
-        gap_row = self.conn.execute("""
+        gap_row = cur.execute("""
             WITH lagged AS (
                 SELECT symbol, trade_date,
                        LAG(trade_date) OVER (PARTITION BY symbol ORDER BY trade_date) AS prev_date
@@ -420,7 +422,7 @@ class MarketDataStore:
         missing_gaps = int(gap_row[0]) if gap_row else 0
 
         # Check stale symbols relative to max trade_date in store
-        stale_rows = self.conn.execute("""
+        stale_rows = cur.execute("""
             WITH max_global AS (
                 SELECT market, MAX(trade_date) AS market_max_date
                 FROM daily_prices
@@ -439,7 +441,7 @@ class MarketDataStore:
         """).fetchall()
         stale_symbols = [r[0] for r in stale_rows]
 
-        prov_rows = self.conn.execute("""
+        prov_rows = cur.execute("""
             SELECT source, COUNT(*) FROM daily_prices GROUP BY source
         """).fetchall()
         provenance = {str(r[0]): int(r[1]) for r in prov_rows}
